@@ -4,6 +4,7 @@
 #include "Arguments.h"
 #include "Hello.h"
 #include "Logger.h"
+#include "GraphicsEngine.h"
 
 int main(int argc, char* argv[]) {
   Arguments args = parce_arguments(argc, argv);
@@ -13,15 +14,16 @@ int main(int argc, char* argv[]) {
   }
 
   init_logging(args.log_bufferisation, args.log_level);
-  Planina* planina = init_planina();
-  if (planina == NULL) {
-    plog_error("No allocated memory");
+
+  GraphicsEngine *engine = init_graphics_engine();
+  if (engine == NULL) {
+    plog_error("%s", "Can't init GraphicsEngine");
     exit(1);
   }
 
-  planina_say_hello(planina);
+  engine_run(engine);
 
-  free_planina(planina);
+  free_graphics_engine(engine);
 
   plog_trace("end");
   return 0;

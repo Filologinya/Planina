@@ -37,6 +37,7 @@ void planina_say_hello(Planina* planina) {
     plog_error("%s", "glfwInit failed!");
     return;
   }
+  glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
   plog_trace("Initialized glfw");
 
   // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);

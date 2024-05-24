@@ -23,13 +23,6 @@ void init_logging(int buffering, int log_level) {
     setvbuf(stdout, logging_buffer, _IOFBF, sizeof(logging_buffer));
 
   hist_buffer.index = 0;
-
-  // TODO: Remove, it's just to show logs
-  plog_error("error log testing");
-  plog_warn("warning log testing");
-  plog_info("info log testing");
-  plog_debug("debug log testing");
-  plog_trace("trace log testing");
 }
 
 void log_format(const char* filename, int linenum, const char* tag,

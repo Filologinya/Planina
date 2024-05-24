@@ -1,11 +1,14 @@
 #pragma once
 
+#include "InputHandler.h"
+#include "graphics/Window.h"
+
 typedef struct {
-  // Содержит данные для отрисовки
-  // шейдеры
-  // детали интерфейса
+  Window* window;
+  InputHandler *input;
 } GraphicsEngine;
 
-// (1-2) Создание и освобождение
+GraphicsEngine* init_graphics_engine();
+void free_graphics_engine(GraphicsEngine* engine);
 
-// (3) Отрисовка мира (из самого мира и положения камеры)
+void engine_run(GraphicsEngine* engine);
