@@ -1,11 +1,14 @@
-#ifndef GRAPHICS_SHADER_H_
-#define GRAPGICS_SHADE_H_
+#pragma once
+
+#include "ResourceManager.h"
+#include "Types.h"
 
 typedef struct {
-  unsigned int id;
+  u32 id;
 } Shader;
 
-Shader* init_engine(Arguments* arguments, char** errmsg);
-void clear_engine(Shader* engine);
+Shader* init_shader(ResourceManager* res, const char* vertex_file,
+                    const char* fragment_file);
+void free_shader(Shader* shader);
 
-#endif
+void shader_use(Shader* shader);

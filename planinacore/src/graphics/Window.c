@@ -21,6 +21,7 @@ Window* init_window(i32 width, i32 height, const char* title) {
       plog_error("%s", "glfwInit failed!");
       goto init_window_error;
     }
+    // TODO: make GL_TRUE
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
     plog_trace("Initialized glfw");
   }

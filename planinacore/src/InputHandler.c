@@ -1,5 +1,7 @@
 #include "InputHandler.h"
 
+#include <glad/glad.h>
+// It should go next for glad capability
 #include <GLFW/glfw3.h>
 #include <stdlib.h>
 #include <string.h>
@@ -56,6 +58,10 @@ void glfw_mouse_button_callback(GLFWwindow* window, i32 button, i32 action,
   }
 }
 
+void glfw_window_size_callback(GLFWwindow* window, int width, int height) {
+  glViewport(0, 0, width, height);
+}
+
 InputHandler* init_input_handler(Window* window) {
   if (input_handler_inited != 0) {
     plog_warn("%s", "Can't init more than one InputHandler");
@@ -81,6 +87,7 @@ InputHandler* init_input_handler(Window* window) {
   glfwSetKeyCallback(window->gl_window, glfw_key_callback);
   glfwSetMouseButtonCallback(window->gl_window, glfw_mouse_button_callback);
   glfwSetCursorPosCallback(window->gl_window, glfw_cursor_position_callback);
+  glfwSetWindowSizeCallback(window->gl_window, glfw_window_size_callback);
 
   input_handler_inited = 1;
   return input;

@@ -2,7 +2,6 @@
 #include <stdlib.h>
 
 #include "Arguments.h"
-#include "Hello.h"
 #include "Logger.h"
 #include "GraphicsEngine.h"
 
@@ -15,7 +14,7 @@ int main(int argc, char* argv[]) {
 
   init_logging(args.log_bufferisation, args.log_level);
 
-  GraphicsEngine *engine = init_graphics_engine();
+  GraphicsEngine *engine = init_graphics_engine(argc, argv);
   if (engine == NULL) {
     plog_error("%s", "Can't init GraphicsEngine");
     exit(1);
