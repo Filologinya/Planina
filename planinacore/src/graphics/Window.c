@@ -14,6 +14,8 @@ static i8 glad_inited = 0;
 Window* init_window(i32 width, i32 height, const char* title) {
   Window* window = (Window*)malloc(sizeof(Window));
   plog_debug("Allocate window [%p]", window);
+  window->width = width;
+  window->height = height;
 
   if (!glfw_inited) {
     glfw_inited = 1;
@@ -21,7 +23,6 @@ Window* init_window(i32 width, i32 height, const char* title) {
       plog_error("%s", "glfwInit failed!");
       goto init_window_error;
     }
-    // TODO: make GL_TRUE
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
     plog_trace("Initialized glfw");
   }
@@ -76,3 +77,7 @@ void window_set_should_close(Window* window, i32 code) {
 }
 
 void window_swap_buffers(Window* window) { glfwSwapBuffers(window->gl_window); }
+
+void window_set_cursor_mode(Window* window, i32 mode) {
+  glfwSetInputMode(window->gl_window, GLFW_CURSOR, mode);
+}

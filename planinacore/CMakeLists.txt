@@ -14,6 +14,7 @@ set(PUBLIC_INCLUDES
     ${INC_DIR}/graphics/Window.h
     ${INC_DIR}/graphics/Shader.h
     ${INC_DIR}/graphics/Texture.h
+    ${INC_DIR}/graphics/Camera.h
     ${INC_DIR}/ResourceManager.h
 )
 
@@ -26,6 +27,7 @@ set(PRIVATE_SOURCES
     ${SRC_DIR}/graphics/Window.c
     ${SRC_DIR}/graphics/Shader.c
     ${SRC_DIR}/graphics/Texture.c
+    ${SRC_DIR}/graphics/Camera.c
     ${SRC_DIR}/ResourceManager.c
 )
 
@@ -56,6 +58,11 @@ target_link_libraries(planinacore PRIVATE glfw)
 
 #=- Glad -=#
 add_subdirectory(third_party/glad)
+target_link_libraries(planinacore PRIVATE glad)
+
+#=- GLM -=#
+add_subdirectory(third_party/cglm)
+target_link_libraries(planinacore PUBLIC cglm)
 
 #=- stb -=#
 # just include all headers as it is
@@ -69,5 +76,3 @@ add_custom_command(TARGET planinacore POST_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy_directory
                        ${CMAKE_CURRENT_SOURCE_DIR}/res 
                        ${CMAKE_BINARY_DIR}/res)
-
-target_link_libraries(planinacore PRIVATE glad)

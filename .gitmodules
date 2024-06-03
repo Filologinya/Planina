@@ -1,6 +1,6 @@
 [submodule "planinacore/third_party/glfw"]
 	path = planinacore/third_party/glfw
 	url = https://github.com/glfw/glfw.git
-[submodule "planinacore/third_party/glm"]
-	path = planinacore/third_party/glm
-	url = https://github.com/g-truc/glm
+[submodule "planinacore/third_party/cglm"]
+	path = planinacore/third_party/cglm
+	url = https://github.com/recp/cglm

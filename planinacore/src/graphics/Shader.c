@@ -74,3 +74,9 @@ void free_shader(Shader* shader) {
 }
 
 void shader_use(Shader* shader) { glUseProgram(shader->id); }
+
+void shader_uniform_matrix(Shader* shader, const char* name, mat4 matrix) {
+  GLuint transform_loc = glGetUniformLocation(shader->id, name);
+  glUniformMatrix4fv(transform_loc, 1, GL_FALSE, (const float*)matrix);
+
+}

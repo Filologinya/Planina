@@ -6,6 +6,8 @@ struct GLFWwindow;
 
 typedef struct {
   struct GLFWwindow* gl_window;
+  i32 width;
+  i32 height;
 
 } Window;
 
@@ -15,3 +17,4 @@ void free_window(Window* window);
 i32 window_should_close(Window* window);
 void window_set_should_close(Window* window, i32);
 void window_swap_buffers(Window* window);
+void window_set_cursor_mode(Window* window, i32 mode);
