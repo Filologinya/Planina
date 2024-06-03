@@ -10,9 +10,12 @@
 #include "Logger.h"
 #include "ResourceManager.h"
 #include "graphics/Camera.h"
+#include "graphics/Mesh.h"
 #include "graphics/Shader.h"
 #include "graphics/Texture.h"
 #include "graphics/Window.h"
+#include "graphics/VoxelRenderer.h"
+#include "voxel/Chunk.h"
 
 static Shader* s_shader_program;
 
@@ -78,17 +81,6 @@ void free_graphics_engine(GraphicsEngine* engine) {
   free(engine);
 }
 
-f32 vertices[] = {
-    // x    y     z     u     v
-    -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,  //
-    1.0f, -1.0f, 0.0f, 1.0f, 0.0f,   //
-    -1.0f, 1.0f, 0.0f, 0.0f, 1.0f,   //
-                                     //
-    1.0f, -1.0f, 0.0f, 1.0f, 0.0f,   //
-    1.0f, 1.0f, 0.0f, 1.0f, 1.0f,    //
-    -1.0f, 1.0f, 0.0f, 0.0f, 1.0f,   //
-};
-
 void engine_run(GraphicsEngine* engine) {
   Window* win = engine->window;
   InputHandler* input = engine->input;
@@ -101,26 +93,13 @@ void engine_run(GraphicsEngine* engine) {
     plog_error("Can't load texture");
   }
 
-  // Create vertices part
-  GLuint VAO, VBO;
-  glGenVertexArrays(1, &VAO);
-  glGenBuffers(1, &VBO);
-
-  glBindVertexArray(VAO);
-  glBindBuffer(GL_ARRAY_BUFFER, VBO);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-  // position
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat),
-                        (GLvoid*)(0 * sizeof(GLfloat)));
-  glEnableVertexAttribArray(0);
-  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat),
-                        (GLvoid*)(3 * sizeof(GLfloat)));
-  glEnableVertexAttribArray(1);
-
-  glBindVertexArray(0);
+  VoxelRenderer* renderer = init_voxel_renderer(1024 * 1024);
+  Chunk* chunk = init_chunk();
+  Mesh* mesh = render(renderer, chunk);
 
   glClearColor(0.6f, 0.62f, 0.65f, 1);
 
+  glEnable(GL_DEPTH_TEST);
   glEnable(GL_CULL_FACE);
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -149,8 +128,8 @@ void engine_run(GraphicsEngine* engine) {
   // glm_rotate(model_matrix, 0.5f, rotate_vec);
 
   // speed
-  f32 speed = 1.0f;
-  f32 sensitivity = 1.0f;
+  f32 speed = 3.0f;
+  f32 sensitivity = 0.7f;
 
   // camera rotation
   f32 cam_x = 0.0f;
@@ -166,7 +145,7 @@ void engine_run(GraphicsEngine* engine) {
     // == timer tick ==
     current_time = glfwGetTime();
     delta = current_time - last_time;
-    plog_trace("Delta time: %f", delta);
+    //plog_trace("Delta time: %f", delta);
     last_time = current_time;
 
     // == check and proceed input ==
@@ -214,7 +193,7 @@ void engine_run(GraphicsEngine* engine) {
     }
 
     // == Draw ==
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // camera matrix
     camera_get_projection(camera, engine->window, proj_view_matrix);
@@ -228,15 +207,15 @@ void engine_run(GraphicsEngine* engine) {
 
     texture_bind(texture);
 
-    glBindVertexArray(VAO);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    glBindVertexArray(0);
+    mesh_draw(mesh, GL_TRIANGLES);
 
     window_swap_buffers(engine->window);
     pull_events(input);
   }
 
+
+  free_voxel_renderer(renderer);
   free_texture(texture);
-  glDeleteBuffers(1, &VBO);
-  glDeleteVertexArrays(1, &VAO);
+  free_mesh(mesh);
+  free_chunk(chunk);
 }

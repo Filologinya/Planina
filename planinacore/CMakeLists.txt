@@ -11,10 +11,13 @@ set(PUBLIC_INCLUDES
     ${INC_DIR}/Arguments.h
     ${INC_DIR}/InputHandler.h
     ${INC_DIR}/GraphicsEngine.h
+    ${INC_DIR}/graphics/Camera.h
     ${INC_DIR}/graphics/Window.h
     ${INC_DIR}/graphics/Shader.h
     ${INC_DIR}/graphics/Texture.h
-    ${INC_DIR}/graphics/Camera.h
+    ${INC_DIR}/graphics/Mesh.h
+    ${INC_DIR}/graphics/VoxelRenderer.h
+    ${INC_DIR}/voxel/Chunk.h
     ${INC_DIR}/ResourceManager.h
 )
 
@@ -28,6 +31,9 @@ set(PRIVATE_SOURCES
     ${SRC_DIR}/graphics/Shader.c
     ${SRC_DIR}/graphics/Texture.c
     ${SRC_DIR}/graphics/Camera.c
+    ${SRC_DIR}/graphics/Mesh.c
+    ${SRC_DIR}/graphics/VoxelRenderer.c
+    ${SRC_DIR}/voxel/Chunk.c
     ${SRC_DIR}/ResourceManager.c
 )
 
