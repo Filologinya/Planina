@@ -17,70 +17,16 @@
 #include "graphics/Window.h"
 #include "voxel/Chunks.h"
 
+// World and rendering
+static Chunks* chunks;
+static Mesh** meshes;
+static VoxelRenderer* renderer;
+
+// shaders
 static Shader* s_shader_program;
-
-GraphicsEngine* init_graphics_engine(int argc, char* argv[]) {
-  GraphicsEngine* engine = (GraphicsEngine*)malloc(sizeof(GraphicsEngine));
-  plog_debug("Create GraphicsEngine [%p]", engine);
-
-  engine->window = init_window(1200, 800, "planina");
-  if (engine->window == NULL) {
-    plog_error("Can't init window");
-    free(engine);
-    return NULL;
-  }
-
-  engine->input = init_input_handler(engine->window);
-  if (engine->input == NULL) {
-    plog_error("%s", "Can't init InputHandler");
-    free_window(engine->window);
-    free(engine);
-    return NULL;
-  }
-
-  engine->resource = init_resource_manager(argv[0], "res", "non-exist");
-  if (engine->resource == NULL) {
-    plog_error("%s", "Can't init InputHandler");
-    free_input_handler(engine->input);
-    free_window(engine->window);
-    free(engine);
-    return NULL;
-  }
-
-  vec3 camera_position = {64, 10, 64};
-  // 1.6f radians ~= 91*
-  // 1.9f radians ~= 108*
-  // 2.4f radians ~= 137*
-  engine->camera = init_camera(camera_position, 2.4f);
-  if (engine->camera == NULL) {
-    plog_error("%s", "Can't init Camera");
-    free_resource_manager(engine->resource);
-    free_input_handler(engine->input);
-    free_window(engine->window);
-    free(engine);
-    return NULL;
-  }
-
-  s_shader_program = init_shader(engine->resource, "main.glslv", "main.glslf");
-  if (s_shader_program == NULL) {
-    plog_error("%s", "Can't load shaders");
-    free_resource_manager(engine->resource);
-    free_input_handler(engine->input);
-    free_window(engine->window);
-    free(engine);
-    return NULL;
-  }
-
-  return engine;
-}
-void free_graphics_engine(GraphicsEngine* engine) {
-  plog_debug("Free GraphicsEngine [%p]", engine);
-  free_window(engine->window);
-  free_shader(s_shader_program);
-
-  free(engine);
-}
-
+static Shader* s_crosshair_shader;
+static Mesh* s_crosshair_mesh;
+// for crosshair shader
 float vertices[] = {
     // x    y
     -0.01f, -0.01f, 0.01f, 0.01f,
@@ -92,25 +38,74 @@ int attrs[] = {
     2, 0  // null terminator
 };
 
-void engine_run(GraphicsEngine* engine) {
-  Window* win = engine->window;
-  InputHandler* input = engine->input;
-  Camera* camera = engine->camera;
-
-  // Texture
-  glEnable(GL_TEXTURE_2D);
-  Texture* texture = init_texture(engine->resource, "texture.png");
-  if (texture == NULL) {
-    plog_error("Can't load texture");
+GraphicsEngine* init_graphics_engine(int argc, char* argv[]) {
+  GraphicsEngine* engine = (GraphicsEngine*)malloc(sizeof(GraphicsEngine));
+  plog_debug("Create GraphicsEngine [%p]", engine);
+  if (engine == NULL) {
+    return NULL;
   }
 
-  Chunks* chunks = init_chunks(8, 1, 8);
-  Mesh** meshes = (Mesh**)malloc(sizeof(Mesh) * chunks->volume);
+  engine->window = init_window(1200, 800, "planina");
+  if (engine->window == NULL) {
+    plog_error("Can't init window");
+    goto engine_init_err;
+  }
+
+  engine->input = init_input_handler(engine->window);
+  if (engine->input == NULL) {
+    plog_error("%s", "Can't init InputHandler");
+    goto engine_init_err;
+  }
+
+  engine->resource = init_resource_manager(argv[0], "res", "non-exist");
+  if (engine->resource == NULL) {
+    plog_error("%s", "Can't init InputHandler");
+    goto engine_init_err;
+  }
+
+  vec3 camera_position = {64, 10, 64};
+  // 1.6f radians ~= 91*
+  // 1.9f radians ~= 108*
+  // 2.4f radians ~= 137*
+  engine->camera = init_camera(camera_position, 2.4f);
+  if (engine->camera == NULL) {
+    plog_error("%s", "Can't init Camera");
+    goto engine_init_err;
+  }
+
+  s_shader_program = init_shader(engine->resource, "main.glslv", "main.glslf");
+  if (s_shader_program == NULL) {
+    plog_error("%s", "Can't load voxels shaders");
+    goto engine_init_err;
+  }
+
+  s_crosshair_shader = init_shader(engine->resource, "crosshair.glslv", "crosshair.glslf");
+  if (s_crosshair_shader == NULL) {
+    plog_error("Can't load crosshair shader");
+    goto engine_init_err;
+  }
+  s_crosshair_mesh = init_mesh(vertices, 4, attrs);
+
+
+  // world and rendering
+  chunks = init_chunks(8, 1, 8);
+  if (chunks == NULL) {
+    plog_error("Can't init chunks");
+    goto engine_init_err;
+  }
+  meshes = (Mesh**)malloc(sizeof(Mesh) * chunks->volume);
+  if (meshes == NULL) {
+    plog_error("Can't init voxels meshes");
+    goto engine_init_err;
+  }
   for (u32 i = 0; i < chunks->volume; ++i) {
     meshes[i] = NULL;
   }
-  VoxelRenderer* renderer = init_voxel_renderer(1024 * 1024 * 8);
-
+  renderer = init_voxel_renderer(1024 * 1024 * 8);
+  if (renderer == NULL) {
+    plog_error("Can't init renderer");
+    goto engine_init_err;
+  }
   // Init meshes
   Chunk* closes[27];
   for (size_t i = 0; i < chunks->volume; i++) {
@@ -136,13 +131,52 @@ void engine_run(GraphicsEngine* engine) {
     meshes[i] = mesh;
   }
 
-  // crosshair
-  Shader* crosshairShader =
-      init_shader(engine->resource, "crosshair.glslv", "crosshair.glslf");
-  if (crosshairShader == NULL) {
-    plog_error("Can't load shader");
+  return engine;
+
+
+engine_init_err:
+  if (chunks)
+    free_chunks(chunks);
+  if (renderer)
+    free_voxel_renderer(renderer);
+  if (meshes)
+    free(meshes);
+  if (s_shader_program)
+    free_shader(s_shader_program);
+  if (s_crosshair_shader)
+    free_shader(s_crosshair_shader);
+  if (engine->resource)
+    free_resource_manager(engine->resource);
+  if (engine->input)
+    free_input_handler(engine->input);
+  if (engine->window)
+    free_window(engine->window);
+  if (engine)
+    free(engine);
+
+  return NULL;
+}
+void free_graphics_engine(GraphicsEngine* engine) {
+  plog_debug("Free GraphicsEngine [%p]", engine);
+  free_window(engine->window);
+  free_shader(s_shader_program);
+
+  free(engine);
+}
+
+
+void engine_run(GraphicsEngine* engine) {
+  Window* win = engine->window;
+  InputHandler* input = engine->input;
+  Camera* camera = engine->camera;
+
+  // Texture
+  glEnable(GL_TEXTURE_2D);
+  Texture* texture = init_texture(engine->resource, "texture.png");
+  if (texture == NULL) {
+    plog_error("Can't load texture");
   }
-  Mesh* crosshair = init_mesh(vertices, 4, attrs);
+
 
   glClearColor(0.6f, 0.62f, 0.65f, 1);
 
@@ -205,14 +239,14 @@ void engine_run(GraphicsEngine* engine) {
     if (jpressed(input, GLFW_KEY_3)) {
       u32 size = chunks->volume * CHUNK_SIZE;
       u8* buffer = (u8*)malloc(size);
-      chunks_write(chunks, buffer); 
+      chunks_write(chunks, buffer);
 
-      write_res_file(engine->resource, "world.bin", (const char*)buffer, size); 
+      write_res_file(engine->resource, "world.bin", (const char*)buffer, size);
       free(buffer);
     }
     if (jpressed(input, GLFW_KEY_4)) {
-      u8* buffer = (u8*)read_res_file(engine->resource, "world.bin"); 
-      chunks_read(chunks, buffer); 
+      u8* buffer = (u8*)read_res_file(engine->resource, "world.bin");
+      chunks_read(chunks, buffer);
       free(buffer);
     }
     // Close window
@@ -338,8 +372,8 @@ void engine_run(GraphicsEngine* engine) {
     }
 
     // == Crosshair draw ==
-    shader_use(crosshairShader);
-    mesh_draw(crosshair, GL_LINES);
+    shader_use(s_crosshair_shader);
+    mesh_draw(s_crosshair_mesh, GL_LINES);
 
     window_swap_buffers(engine->window);
     pull_events(input);
