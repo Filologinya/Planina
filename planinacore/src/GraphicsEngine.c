@@ -47,7 +47,7 @@ GraphicsEngine* init_graphics_engine(int argc, char* argv[]) {
     return NULL;
   }
 
-  vec3 camera_position = {7, 9, 4};
+  vec3 camera_position = {64, 10, 64};
   // 1.6f radians ~= 91*
   // 1.9f radians ~= 108*
   // 2.4f radians ~= 137*
@@ -132,7 +132,7 @@ void engine_run(GraphicsEngine* engine) {
       oz += 1;
       closes[(oy * 3 + oz) * 3 + ox] = other;
     }
-    Mesh* mesh = render(renderer, chunk, (const Chunk**)closes);
+    Mesh* mesh = render(renderer, chunk, (const Chunk**)closes, 1);
     meshes[i] = mesh;
   }
 
@@ -168,6 +168,9 @@ void engine_run(GraphicsEngine* engine) {
   mat4 proj_view_matrix;
   mat4 camera_view_matrix;
 
+  // block type
+  u8 block_type = 1;
+
   // speed
   f32 speed = 7.0f;
   f32 sensitivity = 0.7f;
@@ -190,9 +193,33 @@ void engine_run(GraphicsEngine* engine) {
     last_time = current_time;
 
     // == check and proceed input ==
+    // Change block type
+    if (jpressed(input, GLFW_KEY_1)) {
+      block_type = 1;
+    }
+    if (jpressed(input, GLFW_KEY_2)) {
+      block_type = 2;
+    }
+
+    // Save world
+    if (jpressed(input, GLFW_KEY_3)) {
+      u32 size = chunks->volume * CHUNK_SIZE;
+      u8* buffer = (u8*)malloc(size);
+      chunks_write(chunks, buffer); 
+
+      write_res_file(engine->resource, "world.bin", (const char*)buffer, size); 
+      free(buffer);
+    }
+    if (jpressed(input, GLFW_KEY_4)) {
+      u8* buffer = (u8*)read_res_file(engine->resource, "world.bin"); 
+      chunks_read(chunks, buffer); 
+      free(buffer);
+    }
+    // Close window
     if (jpressed(input, GLFW_KEY_ESCAPE)) {
       window_set_should_close(win, 1);
     }
+    // Movement
     if (jpressed(input, GLFW_KEY_TAB)) {
       input_toggle_cursor(input, win);
     }
@@ -244,12 +271,10 @@ void engine_run(GraphicsEngine* engine) {
           chunks_set(chunks, 0, (int)iend[0], (int)iend[1], (int)iend[2]);
         }
         if (jclicked(input, GLFW_MOUSE_BUTTON_2)) {
-          plog_trace("put block {%f, %f, %f}", (float)iend[0], (float)iend[1],
-                     (float)iend[2]);
           plog_trace("put block {%d, %d, %d}", (int)(iend[0]) + (int)(norm[0]),
                      (int)(iend[1]) + (int)(norm[1]),
                      (int)(iend[2]) + (int)(norm[2]));
-          chunks_set(chunks, 1, (int)(iend[0]) + (int)(norm[0]),
+          chunks_set(chunks, block_type, (int)(iend[0]) + (int)(norm[0]),
                      (int)(iend[1]) + (int)(norm[1]),
                      (int)(iend[2]) + (int)(norm[2]));
         }
@@ -282,7 +307,7 @@ void engine_run(GraphicsEngine* engine) {
         oz += 1;
         closes[(oy * 3 + oz) * 3 + ox] = other;
       }
-      Mesh* mesh = render(renderer, chunk, (const Chunk**)closes);
+      Mesh* mesh = render(renderer, chunk, (const Chunk**)closes, 1);
       meshes[i] = mesh;
     }
 

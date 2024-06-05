@@ -11,4 +11,4 @@ typedef struct {
 VoxelRenderer* init_voxel_renderer(u32 capacity);
 void free_voxel_renderer(VoxelRenderer* renderer);
 
-Mesh* render(VoxelRenderer* renderer, Chunk* chunk, const Chunk** chunks);
+Mesh* render(VoxelRenderer* renderer, Chunk* chunk, const Chunk** chunks, i8 ambient_occlusion);

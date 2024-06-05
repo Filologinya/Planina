@@ -170,3 +170,28 @@ Voxel* chunks_ray_cast(Chunks* c, vec3 a, vec3 dir, float maxDist, vec3* end,
 
 }
 
+u32 chunks_write(Chunks* c, u8* dest) {
+  u32 index = 0;
+  for (u32 i = 0; i < c->volume; ++i) {
+    Chunk* chunk = c->chunks[i];
+    for (u32 j = 0; j < CHUNK_SIZE; ++j, ++index) {
+      dest[index] = chunk->voxels[j].id;
+    }
+  }
+
+  return index;
+}
+
+u32 chunks_read(Chunks* c, u8* from) {
+  u32 index = 0;
+  for (u32 i = 0; i < c->volume; ++i) {
+    Chunk* chunk = c->chunks[i];
+    for (u32 j = 0; j < CHUNK_SIZE; ++j, ++index) {
+      chunk->voxels[j].id = from[index];
+    }
+    chunk->modified = 1;
+  }
+
+  return index;
+}
+
