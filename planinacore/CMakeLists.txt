@@ -6,7 +6,6 @@ set(INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 set(PUBLIC_INCLUDES
-    ${INC_DIR}/Hello.h
     ${INC_DIR}/Logger.h
     ${INC_DIR}/Arguments.h
     ${INC_DIR}/InputHandler.h
@@ -18,11 +17,11 @@ set(PUBLIC_INCLUDES
     ${INC_DIR}/graphics/Mesh.h
     ${INC_DIR}/graphics/VoxelRenderer.h
     ${INC_DIR}/voxel/Chunk.h
+    ${INC_DIR}/voxel/Chunks.h
     ${INC_DIR}/ResourceManager.h
 )
 
 set(PRIVATE_SOURCES
-    ${SRC_DIR}/Hello.c
     ${SRC_DIR}/Logger.c
     ${SRC_DIR}/Arguments.c
     ${SRC_DIR}/InputHandler.c
@@ -34,11 +33,11 @@ set(PRIVATE_SOURCES
     ${SRC_DIR}/graphics/Mesh.c
     ${SRC_DIR}/graphics/VoxelRenderer.c
     ${SRC_DIR}/voxel/Chunk.c
+    ${SRC_DIR}/voxel/Chunks.c
     ${SRC_DIR}/ResourceManager.c
 )
 
 set(ALL_SRC
-    ${PUBLIC_INCLUDES}
     ${PRIVATE_SOURCES}
 )
 

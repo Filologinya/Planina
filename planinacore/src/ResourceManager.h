@@ -17,3 +17,7 @@ u32 load_res_texture(ResourceManager* manager, const char* filename, int* width,
                      int* height);
 
 char* read_res_file(ResourceManager* manager, const char* filename);
+
+i8 write_res_file(ResourceManager* manager, const char* filename,
+                    const char* data, u32 size);
+

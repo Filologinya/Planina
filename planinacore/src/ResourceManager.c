@@ -138,3 +138,29 @@ char* read_res_file(ResourceManager* manager, const char* filename) {
 
   return res;
 }
+
+i8 write_res_file(ResourceManager* manager, const char* filename, const char* data, u32 size) {
+  u32 sz_path = strlen(manager->res_path);
+  u32 sz_name = strlen(filename);
+  u32 full_sz = sz_path + 1 + sz_name + 1;
+
+  char* full_filename = (char*)malloc(full_sz);
+  memset(full_filename, 0, full_sz);
+  plog_debug("Init string [%p]", full_filename, full_filename);
+  strcpy(full_filename, manager->res_path);
+  full_filename[sz_path] = manager->sep;
+  strcpy(full_filename + sz_path + 1, filename);
+  plog_trace("Got string (%s)", full_filename);
+
+  FILE* file = fopen(full_filename, "w+");
+  plog_debug("Free string [%p]", full_filename);
+  free(full_filename);
+  if (file == NULL) {
+    plog_error("Couldn't open file (%s) for reading", filename);
+    return 1;
+  }
+  plog_debug("Open file (%s) [%p]", filename, file);
+  fwrite(data, size, size, file);
+
+  return 0;
+}

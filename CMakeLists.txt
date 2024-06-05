@@ -2,7 +2,9 @@ cmake_minimum_required(VERSION 3.12)
 
 project(planina)
 
-set(CMAKE_C_FLAGS "-std=c11 -Wall -O2")
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_C_FLAGS "-Wall -O2")
 
 add_executable(planina main.c)
 
