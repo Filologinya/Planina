@@ -13,9 +13,9 @@
 #include "graphics/Mesh.h"
 #include "graphics/Shader.h"
 #include "graphics/Texture.h"
-#include "graphics/Window.h"
 #include "graphics/VoxelRenderer.h"
-#include "voxel/Chunk.h"
+#include "graphics/Window.h"
+#include "voxel/Chunks.h"
 
 static Shader* s_shader_program;
 
@@ -47,7 +47,7 @@ GraphicsEngine* init_graphics_engine(int argc, char* argv[]) {
     return NULL;
   }
 
-  vec3 camera_position = {0, 0, 1};
+  vec3 camera_position = {7, 9, 4};
   // 1.6f radians ~= 91*
   // 1.9f radians ~= 108*
   // 2.4f radians ~= 137*
@@ -81,6 +81,17 @@ void free_graphics_engine(GraphicsEngine* engine) {
   free(engine);
 }
 
+float vertices[] = {
+    // x    y
+    -0.01f, -0.01f, 0.01f, 0.01f,
+
+    -0.01f, 0.01f,  0.01f, -0.01f,
+};
+
+int attrs[] = {
+    2, 0  // null terminator
+};
+
 void engine_run(GraphicsEngine* engine) {
   Window* win = engine->window;
   InputHandler* input = engine->input;
@@ -93,9 +104,45 @@ void engine_run(GraphicsEngine* engine) {
     plog_error("Can't load texture");
   }
 
-  VoxelRenderer* renderer = init_voxel_renderer(1024 * 1024);
-  Chunk* chunk = init_chunk();
-  Mesh* mesh = render(renderer, chunk);
+  Chunks* chunks = init_chunks(8, 1, 8);
+  Mesh** meshes = (Mesh**)malloc(sizeof(Mesh) * chunks->volume);
+  for (u32 i = 0; i < chunks->volume; ++i) {
+    meshes[i] = NULL;
+  }
+  VoxelRenderer* renderer = init_voxel_renderer(1024 * 1024 * 8);
+
+  // Init meshes
+  Chunk* closes[27];
+  for (size_t i = 0; i < chunks->volume; i++) {
+    Chunk* chunk = chunks->chunks[i];
+    chunk->modified = 0;
+
+    for (int i = 0; i < 27; i++) closes[i] = NULL;
+    for (size_t j = 0; j < chunks->volume; j++) {
+      Chunk* other = chunks->chunks[j];
+
+      int ox = other->x - chunk->x;
+      int oy = other->y - chunk->y;
+      int oz = other->z - chunk->z;
+
+      if (abs(ox) > 1 || abs(oy) > 1 || abs(oz) > 1) continue;
+
+      ox += 1;
+      oy += 1;
+      oz += 1;
+      closes[(oy * 3 + oz) * 3 + ox] = other;
+    }
+    Mesh* mesh = render(renderer, chunk, (const Chunk**)closes);
+    meshes[i] = mesh;
+  }
+
+  // crosshair
+  Shader* crosshairShader =
+      init_shader(engine->resource, "crosshair.glslv", "crosshair.glslf");
+  if (crosshairShader == NULL) {
+    plog_error("Can't load shader");
+  }
+  Mesh* crosshair = init_mesh(vertices, 4, attrs);
 
   glClearColor(0.6f, 0.62f, 0.65f, 1);
 
@@ -105,13 +152,13 @@ void engine_run(GraphicsEngine* engine) {
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
   // Matrix for camera rotation and shaders proceeding it
-  mat4 model_matrix = {
+  mat4 unary_matrix = {
       {1.0f, 0.0f, 0.0f, 0.0f},
       {0.0f, 1.0f, 0.0f, 0.0f},
       {0.0f, 0.0f, 1.0f, 0.0f},
       {0.0f, 0.0f, 0.0f, 1.0f},
   };
-  mat4 unary_matrix = {
+  mat4 model_matrix = {
       {1.0f, 0.0f, 0.0f, 0.0f},
       {0.0f, 1.0f, 0.0f, 0.0f},
       {0.0f, 0.0f, 1.0f, 0.0f},
@@ -121,14 +168,8 @@ void engine_run(GraphicsEngine* engine) {
   mat4 proj_view_matrix;
   mat4 camera_view_matrix;
 
-  // TODO: remove play
-  // vec3 scale_vec = { 0.5f, 0.5f, 0.5f };
-  // vec3 rotate_vec = { 0.0f, 0.0f, 1.0f };
-  // glm_scale(model_matrix, scale_vec);
-  // glm_rotate(model_matrix, 0.5f, rotate_vec);
-
   // speed
-  f32 speed = 3.0f;
+  f32 speed = 7.0f;
   f32 sensitivity = 0.7f;
 
   // camera rotation
@@ -145,7 +186,7 @@ void engine_run(GraphicsEngine* engine) {
     // == timer tick ==
     current_time = glfwGetTime();
     delta = current_time - last_time;
-    //plog_trace("Delta time: %f", delta);
+    // plog_trace("Delta time: %f", delta);
     last_time = current_time;
 
     // == check and proceed input ==
@@ -173,9 +214,6 @@ void engine_run(GraphicsEngine* engine) {
     if (pressed(input, GLFW_KEY_LEFT_CONTROL)) {
       camera->position[1] -= delta * speed;
     }
-    if (jclicked(input, GLFW_MOUSE_BUTTON_1)) {
-      glClearColor(0.2, 0, 0, 1);
-    }
 
     // camera rotation
     if (cursor_moving_camera(input)) {
@@ -192,30 +230,99 @@ void engine_run(GraphicsEngine* engine) {
       camera_rotate(camera, cam_y, cam_x, 0);
     }
 
-    // == Draw ==
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    // Put or delete block
+    {
+      vec3 end;
+      vec3 norm;
+      vec3 iend;
+      Voxel* vox = chunks_ray_cast(chunks, camera->position, camera->front,
+                                   10.0f, &end, &norm, &iend);
+      if (vox != NULL) {
+        if (jclicked(input, GLFW_MOUSE_BUTTON_1)) {
+          plog_trace("break block {%f, %f, %f}", (float)iend[0], (float)iend[1],
+                     (float)iend[2]);
+          chunks_set(chunks, 0, (int)iend[0], (int)iend[1], (int)iend[2]);
+        }
+        if (jclicked(input, GLFW_MOUSE_BUTTON_2)) {
+          plog_trace("put block {%f, %f, %f}", (float)iend[0], (float)iend[1],
+                     (float)iend[2]);
+          plog_trace("put block {%d, %d, %d}", (int)(iend[0]) + (int)(norm[0]),
+                     (int)(iend[1]) + (int)(norm[1]),
+                     (int)(iend[2]) + (int)(norm[2]));
+          chunks_set(chunks, 1, (int)(iend[0]) + (int)(norm[0]),
+                     (int)(iend[1]) + (int)(norm[1]),
+                     (int)(iend[2]) + (int)(norm[2]));
+        }
+      }
+    }
 
+    // Processing nearest chunks for right vision
+    Chunk* closes[27];
+    for (size_t i = 0; i < chunks->volume; i++) {
+      Chunk* chunk = chunks->chunks[i];
+      if (!chunk->modified) continue;
+      plog_trace("Chunk (%d) modified", i);
+      chunk->modified = 0;
+      if (meshes[i] != NULL) {
+        free_mesh(meshes[i]);
+      }
+
+      for (int i = 0; i < 27; i++) closes[i] = NULL;
+      for (size_t j = 0; j < chunks->volume; j++) {
+        Chunk* other = chunks->chunks[j];
+
+        int ox = other->x - chunk->x;
+        int oy = other->y - chunk->y;
+        int oz = other->z - chunk->z;
+
+        if (abs(ox) > 1 || abs(oy) > 1 || abs(oz) > 1) continue;
+
+        ox += 1;
+        oy += 1;
+        oz += 1;
+        closes[(oy * 3 + oz) * 3 + ox] = other;
+      }
+      Mesh* mesh = render(renderer, chunk, (const Chunk**)closes);
+      meshes[i] = mesh;
+    }
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    // == Draw chunks ==
     // camera matrix
     camera_get_projection(camera, engine->window, proj_view_matrix);
     camera_get_view(camera, camera_view_matrix);
     glm_mat4_mul(proj_view_matrix, camera_view_matrix, proj_view_matrix);
-
     // shader work
     shader_use(s_shader_program);
-    shader_uniform_matrix(s_shader_program, "model", model_matrix);
     shader_uniform_matrix(s_shader_program, "projview", proj_view_matrix);
-
     texture_bind(texture);
 
-    mesh_draw(mesh, GL_TRIANGLES);
+    for (u32 i = 0; i < chunks->volume; i++) {
+      Chunk* chunk = chunks->chunks[i];
+      Mesh* mesh = meshes[i];
+      if (mesh == NULL) continue;
+
+      f32 real_x = chunk->x * CHUNK_W + 0.5f;
+      f32 real_y = chunk->y * CHUNK_H + 0.5f;
+      f32 real_z = chunk->z * CHUNK_D + 0.5f;
+
+      vec3 translate_vec = {real_x, real_y, real_z};
+      glm_translate_to(unary_matrix, translate_vec, model_matrix);
+      shader_uniform_matrix(s_shader_program, "model", model_matrix);
+      mesh_draw(mesh, GL_TRIANGLES);
+    }
+
+    // == Crosshair draw ==
+    shader_use(crosshairShader);
+    mesh_draw(crosshair, GL_LINES);
 
     window_swap_buffers(engine->window);
     pull_events(input);
   }
 
-
   free_voxel_renderer(renderer);
   free_texture(texture);
-  free_mesh(mesh);
-  free_chunk(chunk);
+  for (u32 i = 0; i < chunks->volume; ++i) {
+    if (meshes[i] != NULL) free_mesh(meshes[i]);
+  }
 }

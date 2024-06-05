@@ -10,18 +10,15 @@ const i32 VERTEX_SIZE = 3 + 2 + 1;
 
 const int chunk_attrs[] = {3, 2, 1, 0};  // with null terminator
 
-inline static i8 is_in(i32 x, i32 y, i32 z) {
-  return (0 <= x && x < CHUNK_W) && (0 <= y && y < CHUNK_H) &&
-         (0 <= z && z < CHUNK_D);
-}
 
-inline static i32 get_voxel_n(i32 x, i32 y, i32 z) {
-  return (y * CHUNK_D + z) * CHUNK_W + x;
-}
+#define CDIV(X,A) (((X) < 0) ? ((X) / (A) - 1) : ((X) / (A)))
+#define LOCAL_NEG(X, SIZE) (((X) < 0) ? ((SIZE)+(X)) : (X))
+#define LOCAL(X, SIZE) ((X) >= (SIZE) ? ((X) - (SIZE)) : LOCAL_NEG(X, SIZE))
+#define IS_CHUNK(X,Y,Z) (GET_CHUNK(X,Y,Z) != NULL)
+#define GET_CHUNK(X,Y,Z) (chunks[((CDIV(Y, CHUNK_H)+1) * 3 + CDIV(Z, CHUNK_D) + 1) * 3 + CDIV(X, CHUNK_W) + 1])
 
-inline static i8 is_blocked(Voxel* voxels, i32 x, i32 y, i32 z) {
-  return is_in(x, y, z) && (voxels[get_voxel_n(x, y, z)].id > 0);
-}
+#define VOXEL(X,Y,Z) (GET_CHUNK(X,Y,Z)->voxels[(LOCAL(Y, CHUNK_H) * CHUNK_D + LOCAL(Z, CHUNK_D)) * CHUNK_W + LOCAL(X, CHUNK_W)])
+#define IS_BLOCKED(X,Y,Z) ((!IS_CHUNK(X, Y, Z)) || VOXEL(X, Y, Z).id)
 
 inline static void vertex(f32* buffer, u32* index, f32 x, f32 y, f32 z, f32 u,
                           f32 v, f32 l) {
@@ -49,18 +46,7 @@ void free_voxel_renderer(VoxelRenderer* renderer) {
   free(renderer);
 }
 
-#define IS_IN(X,Y,Z) ((X) >= 0 && (X) < CHUNK_W && (Y) >= 0 && (Y) < CHUNK_H && (Z) >= 0 && (Z) < CHUNK_D)
-#define VOXEL(X,Y,Z) (chunk->voxels[((Y) * CHUNK_D + (Z)) * CHUNK_W + (X)])
-
-#define VERTEX(INDEX, X,Y,Z, U,V, L) buffer[INDEX+0] = (X);\
-								  buffer[INDEX+1] = (Y);\
-								  buffer[INDEX+2] = (Z);\
-								  buffer[INDEX+3] = (U);\
-								  buffer[INDEX+4] = (V);\
-								  buffer[INDEX+5] = (L);\
-								  INDEX += VERTEX_SIZE;
-
-Mesh* render(VoxelRenderer* renderer, Chunk* chunk) {
+Mesh* render(VoxelRenderer* renderer, Chunk* chunk, const Chunk** chunks) {
   f32* buffer = renderer->buffer;
   u32 index = 0;
 	for (int y = 0; y < CHUNK_H; y++){
@@ -78,7 +64,7 @@ Mesh* render(VoxelRenderer* renderer, Chunk* chunk) {
 				float u = (id % 16) * uvsize;
 				float v = 1-((1 + id / 16) * uvsize);
 
-				if (!is_blocked(chunk->voxels,x,y+1,z)){
+				if (!IS_BLOCKED(x,y+1,z)){
 					l = 1.0f;
 					vertex(buffer, &index, x - 0.5f, y + 0.5f, z - 0.5f, u+uvsize,v, l);
 					vertex(buffer, &index, x - 0.5f, y + 0.5f, z + 0.5f, u+uvsize,v+uvsize, l);
@@ -88,7 +74,7 @@ Mesh* render(VoxelRenderer* renderer, Chunk* chunk) {
 					vertex(buffer, &index, x + 0.5f, y + 0.5f, z + 0.5f, u,v+uvsize, l);
 					vertex(buffer, &index, x + 0.5f, y + 0.5f, z - 0.5f, u,v, l);
 				}
-				if (!is_blocked(chunk->voxels,x,y-1,z)){
+				if (!IS_BLOCKED(x,y-1,z)){
 					l = 0.75f;
 					vertex(buffer, &index, x - 0.5f, y - 0.5f, z - 0.5f, u,v, l);
 					vertex(buffer, &index, x + 0.5f, y - 0.5f, z + 0.5f, u+uvsize,v+uvsize, l);
@@ -99,7 +85,7 @@ Mesh* render(VoxelRenderer* renderer, Chunk* chunk) {
 					vertex(buffer, &index, x + 0.5f, y - 0.5f, z + 0.5f, u+uvsize,v+uvsize, l);
 				}
 
-				if (!is_blocked(chunk->voxels,x+1,y,z)){
+				if (!IS_BLOCKED(x+1,y,z)){
 					l = 0.95f;
 					vertex(buffer, &index, x + 0.5f, y - 0.5f, z - 0.5f, u+uvsize,v, l);
 					vertex(buffer, &index, x + 0.5f, y + 0.5f, z - 0.5f, u+uvsize,v+uvsize, l);
@@ -109,7 +95,7 @@ Mesh* render(VoxelRenderer* renderer, Chunk* chunk) {
 					vertex(buffer, &index, x + 0.5f, y + 0.5f, z + 0.5f, u,v+uvsize, l);
 					vertex(buffer, &index, x + 0.5f, y - 0.5f, z + 0.5f, u,v, l);
 				}
-				if (!is_blocked(chunk->voxels,x-1,y,z)){
+				if (!IS_BLOCKED(x-1,y,z)){
 					l = 0.85f;
 					vertex(buffer, &index, x - 0.5f, y - 0.5f, z - 0.5f, u,v, l);
 					vertex(buffer, &index, x - 0.5f, y + 0.5f, z + 0.5f, u+uvsize,v+uvsize, l);
@@ -120,7 +106,7 @@ Mesh* render(VoxelRenderer* renderer, Chunk* chunk) {
 					vertex(buffer, &index, x - 0.5f, y + 0.5f, z + 0.5f, u+uvsize,v+uvsize, l);
 				}
 
-				if (!is_blocked(chunk->voxels,x,y,z+1)){
+				if (!IS_BLOCKED(x,y,z+1)){
 					l = 0.9f;
 					vertex(buffer, &index, x - 0.5f, y - 0.5f, z + 0.5f, u,v, l);
 					vertex(buffer, &index, x + 0.5f, y + 0.5f, z + 0.5f, u+uvsize,v+uvsize, l);
@@ -130,7 +116,7 @@ Mesh* render(VoxelRenderer* renderer, Chunk* chunk) {
 					vertex(buffer, &index, x + 0.5f, y - 0.5f, z + 0.5f, u+uvsize,v, l);
 					vertex(buffer, &index, x + 0.5f, y + 0.5f, z + 0.5f, u+uvsize,v+uvsize, l);
 				}
-				if (!is_blocked(chunk->voxels,x,y,z-1)){
+				if (!IS_BLOCKED(x,y,z-1)){
 					l = 0.8f;
 					vertex(buffer, &index, x - 0.5f, y - 0.5f, z - 0.5f, u+uvsize,v, l);
 					vertex(buffer, &index, x - 0.5f, y + 0.5f, z - 0.5f, u+uvsize,v+uvsize, l);
